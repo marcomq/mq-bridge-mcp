@@ -5,9 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// API Key authentication details.
-#[derive(
-    Debug, serde::Deserialize, serde::Serialize, JsonSchema, Clone, Default, PartialEq,
-)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, JsonSchema, Clone, Default, PartialEq)]
 pub struct ApiKeyAuth {
     /// The HTTP header to check for the API key. Defaults to "Authorization".
     #[serde(default)]
@@ -18,9 +16,7 @@ pub struct ApiKeyAuth {
 }
 
 /// Authentication methods for the MCP server.
-#[derive(
-    Debug, serde::Deserialize, serde::Serialize, JsonSchema, Clone, Default, PartialEq,
-)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, JsonSchema, Clone, Default, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum McpAuth {
     #[default]

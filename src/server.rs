@@ -1,5 +1,6 @@
 use mq_bridge::CanonicalMessage;
 use rmcp::{
+    ErrorData as McpError, RoleServer, ServerHandler, Service,
     model::{
         Annotated, CallToolRequestParams, CallToolResult, ClientRequest, EmptyResult,
         ListResourcesResult, ListToolsResult, PaginatedRequestParams, RawResource,
@@ -8,7 +9,6 @@ use rmcp::{
         ServerInfo, ServerResult,
     },
     service::{NotificationContext, RequestContext, ServiceExt},
-    ErrorData as McpError, RoleServer, ServerHandler, Service,
 };
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -308,7 +308,8 @@ impl MqBridgeMcpServer {
         }
 
         for (name, def) in config.consumers.iter() {
-            mq_bridge::endpoints::check_consumer(name, &def.endpoint, None).expect("Invalid consumer config: {name}");
+            mq_bridge::endpoints::check_consumer(name, &def.endpoint, None)
+                .expect("Invalid consumer config: {name}");
             let tool_name = format!("consume_from_{}", to_tool_suffix(name));
             tool_list.push(McpTool {
                 name: tool_name,
@@ -329,9 +330,7 @@ impl MqBridgeMcpServer {
     pub async fn start(self, mcp_config: &McpConfig) -> anyhow::Result<()> {
         let bind = &mcp_config.bind;
         match mcp_config.transport {
-            McpTransport::StreamableHttp => {
-                self.start_streamable_http(bind, &mcp_config.tls).await
-            }
+            McpTransport::StreamableHttp => self.start_streamable_http(bind, &mcp_config.tls).await,
             McpTransport::Stdio => self.start_stdio().await,
         }
     }
@@ -342,9 +341,9 @@ impl MqBridgeMcpServer {
         tls_config: &Option<mq_bridge::models::TlsConfig>,
     ) -> anyhow::Result<()> {
         use axum::serve;
-        use axum::{routing::get, Router};
+        use axum::{Router, routing::get};
         use rmcp::transport::streamable_http_server::{
-            session::local::LocalSessionManager, StreamableHttpServerConfig, StreamableHttpService,
+            StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
         };
 
         let addr: std::net::SocketAddr = bind.parse()?;
@@ -433,9 +432,9 @@ impl MqBridgeMcpServer {
 
                         if let Some(id_val) = obj.get("message_id") {
                             // Use CanonicalMessage's own parser logic for ID
-                            if let Ok(tm) =
-                                CanonicalMessage::from_json(serde_json::json!({ "message_id": id_val }))
-                            {
+                            if let Ok(tm) = CanonicalMessage::from_json(
+                                serde_json::json!({ "message_id": id_val }),
+                            ) {
                                 m.message_id = tm.message_id;
                             }
                         }
@@ -458,7 +457,10 @@ impl MqBridgeMcpServer {
 
                 let endpoint_name = tool.connector.endpoint_name.as_deref().unwrap_or_default();
                 let Some(pub_def) = publisher_registry::get_publisher(endpoint_name) else {
-                    return Err(mcp_invalid(format!("Publisher '{}' not found", endpoint_name)));
+                    return Err(mcp_invalid(format!(
+                        "Publisher '{}' not found",
+                        endpoint_name
+                    )));
                 };
 
                 let publisher = pub_def.publisher.clone();

@@ -14,7 +14,7 @@ use clap::Parser;
 use std::time::Duration;
 use tracing::{info, warn};
 
-use crate::configuration::{McpTransport, load_mcp_app_config, McpAppConfig};
+use crate::configuration::{McpAppConfig, McpTransport, load_mcp_app_config};
 use crate::server::MqBridgeMcpServer;
 
 #[derive(Parser, Debug)]

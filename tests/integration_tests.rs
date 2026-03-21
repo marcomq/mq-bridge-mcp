@@ -21,10 +21,18 @@ impl DockerEnvironment {
             Err(poisoned) => poisoned.into_inner(),
         };
         let root = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".into());
-        let compose_file = Path::new(&root).join("tests").join("docker-compose").join(format!("{}.yml", service)).to_string_lossy().into_owned();
+        let compose_file = Path::new(&root)
+            .join("tests")
+            .join("docker-compose")
+            .join(format!("{}.yml", service))
+            .to_string_lossy()
+            .into_owned();
 
         if !Path::new(&compose_file).exists() {
-            eprintln!("Warning: {} not found. Ensure it exists in the project root.", compose_file);
+            eprintln!(
+                "Warning: {} not found. Ensure it exists in the project root.",
+                compose_file
+            );
         }
 
         // Ensure clean state before starting
@@ -47,7 +55,10 @@ impl DockerEnvironment {
         // Wait for services to be ready.
         wait_for_healthy(&compose_file);
 
-        Self { compose_file, _guard }
+        Self {
+            compose_file,
+            _guard,
+        }
     }
 }
 
@@ -73,7 +84,10 @@ fn wait_for_healthy(compose_file: &str) {
 
         if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout);
-            if stdout.contains("(healthy)") && !stdout.contains("(health: starting)") && !stdout.contains("(unhealthy)") {
+            if stdout.contains("(healthy)")
+                && !stdout.contains("(health: starting)")
+                && !stdout.contains("(unhealthy)")
+            {
                 return;
             }
         } else {
@@ -82,7 +96,10 @@ fn wait_for_healthy(compose_file: &str) {
         }
         thread::sleep(Duration::from_millis(500));
     }
-    panic!("Services in {} did not become healthy in time", compose_file);
+    panic!(
+        "Services in {} did not become healthy in time",
+        compose_file
+    );
 }
 
 // Note: Run these tests with `cargo test -- --test-threads=1 --ignored` to ensure
@@ -117,7 +134,9 @@ fn run_publish_test(config_yaml: &str, tool_name: &str) {
         .expect("Failed to write init");
 
     let mut line = String::new();
-    reader.read_line(&mut line).expect("Failed to read init response");
+    reader
+        .read_line(&mut line)
+        .expect("Failed to read init response");
     assert!(line.contains("result"), "Init failed: {}", line);
 
     // 2. Send Initialized Notification
@@ -136,14 +155,20 @@ fn run_publish_test(config_yaml: &str, tool_name: &str) {
         .expect("Failed to write tool call");
 
     line.clear();
-    reader.read_line(&mut line).expect("Failed to read tool response");
+    reader
+        .read_line(&mut line)
+        .expect("Failed to read tool response");
 
     // 4. Assert Success
     // We expect a successful result, not an error.
     if line.contains("\"error\"") {
         panic!("Tool call failed: {}", line);
     }
-    assert!(line.contains("Message published successfully"), "Unexpected response: {}", line);
+    assert!(
+        line.contains("Message published successfully"),
+        "Unexpected response: {}",
+        line
+    );
 
     // Cleanup
     let _ = child.kill();
@@ -152,7 +177,7 @@ fn run_publish_test(config_yaml: &str, tool_name: &str) {
 #[test]
 fn test_kafka_integration() {
     let _env = DockerEnvironment::new("kafka");
-    
+
     let config = r#"
 mcp:
   transport: stdio
@@ -209,10 +234,12 @@ publishers:
 #[test]
 fn test_file_integration() {
     // No Docker needed for file test
-    let temp_file = std::env::temp_dir().join(format!("mq_test_{}.txt", fast_uuid_v7::gen_id_str()));
+    let temp_file =
+        std::env::temp_dir().join(format!("mq_test_{}.txt", fast_uuid_v7::gen_id_str()));
     let file_path_str = temp_file.to_string_lossy().replace('\\', "/");
 
-    let config = format!(r#"
+    let config = format!(
+        r#"
 mcp:
   transport: stdio
 publishers:
@@ -221,14 +248,16 @@ publishers:
       path: "{}"
       format: raw
     description: "Integration Test File"
-"#, file_path_str);
+"#,
+        file_path_str
+    );
 
     run_publish_test(&config, "publish_to_file_test");
 
     // Verify content
     let content = std::fs::read_to_string(&temp_file).expect("Failed to read output file");
     assert!(content.contains("hello from integration test"));
-    
+
     // Cleanup
     let _ = std::fs::remove_file(temp_file);
 }
@@ -238,7 +267,7 @@ fn test_http_integration() {
     // Start a simple TCP listener to act as the HTTP server
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to free port");
     let port = listener.local_addr().unwrap().port();
-    
+
     // Spawn a thread to handle the incoming request
     thread::spawn(move || {
         for stream in listener.incoming() {
@@ -252,7 +281,8 @@ fn test_http_integration() {
         }
     });
 
-    let config = format!(r#"
+    let config = format!(
+        r#"
 mcp:
   transport: stdio
 publishers:
@@ -260,7 +290,9 @@ publishers:
     http:
       url: "http://127.0.0.1:{}"
     description: "Integration Test HTTP"
-"#, port);
+"#,
+        port
+    );
 
     run_publish_test(&config, "publish_to_http_test");
 }
