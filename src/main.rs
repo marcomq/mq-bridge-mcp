@@ -112,7 +112,8 @@ async fn main() -> anyhow::Result<()> {
         route.options.description = publisher_conf.description.clone();
 
         let mut attempts = 0;
-        const MAX_ATTEMPTS: u32 = 3;
+        const MAX_ATTEMPTS: u32 = 10;
+        mq_bridge::endpoints::check_publisher(name, &route.output, None)?;
 
         while attempts < MAX_ATTEMPTS {
             attempts += 1;

@@ -308,6 +308,7 @@ impl MqBridgeMcpServer {
         }
 
         for (name, def) in config.consumers.iter() {
+            mq_bridge::endpoints::check_consumer(name, &def.endpoint, None).expect("Invalid consumer config: {name}");
             let tool_name = format!("consume_from_{}", to_tool_suffix(name));
             tool_list.push(McpTool {
                 name: tool_name,

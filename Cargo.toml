@@ -24,3 +24,21 @@ axum-server = { version = "0.8.0", features = ["tls-rustls"] }
 rustls = "0.23.37"
 rustls-pemfile = "2.2.0"
 
+rdkafka = { version = "0.38.0", features = ["tokio"], optional = true }
+
+[features]
+default = ["full"]
+full = ["mq-bridge/full"]
+ibm-mq = ["mq-bridge/ibm-mq"]
+arm64-cross-compile = ["rdkafka", "rdkafka/cmake-build"]
+middleware = ["mq-bridge/middleware"]
+mongodb = ["mq-bridge/mongodb"]
+http = ["mq-bridge/http"]
+kafka = ["mq-bridge/kafka"]
+aws = ["mq-bridge/aws"]
+nats = ["mq-bridge/nats"]
+mqtt = ["mq-bridge/mqtt"]
+zeromq = ["mq-bridge/zeromq"]
+sled = ["mq-bridge/sled"]
+grpc = ["mq-bridge/grpc"]
+amqp = ["mq-bridge/amqp"]
