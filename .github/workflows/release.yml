@@ -33,8 +33,13 @@ jobs:
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config zlib1g-dev cmake libcurl4-openssl-dev
 
-      - name: Run cargo test
-        run: cargo test --all-targets
+      - name: Build binary
+        run: cargo build --release
+
+      - name: Run integration tests
+        env:
+          MQ_BRIDGE_BINARY: ./target/release/mq-bridge-mcp
+        run: cargo test --release --no-default-features --test integration_tests
 
   create-release:
     name: Create GitHub Release

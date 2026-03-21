@@ -26,6 +26,9 @@ rustls-pemfile = "2.2.0"
 
 rdkafka = { version = "0.38.0", features = ["tokio"], optional = true }
 
+[dev-dependencies]
+fast-uuid-v7 = "0.1.3"
+
 [features]
 default = ["full"]
 full = ["mq-bridge/full"]

@@ -23,7 +23,7 @@ jobs:
           toolchain: stable
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config zlib1g-dev
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config zlib1g-dev cmake libcurl4-openssl-dev
 
       - name: Run cargo check
         run: cargo check --all-targets
@@ -41,7 +41,10 @@ jobs:
           toolchain: stable
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config zlib1g-dev
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config zlib1g-dev cmake libcurl4-openssl-dev
+
+      - name: Run cargo build
+        run: cargo build --all-targets
 
       - name: Run cargo test
         run: cargo test --all-targets

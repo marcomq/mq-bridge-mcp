@@ -1,5 +1,5 @@
-use std::io::{BufRead, BufReader, Write};
-use std::net::TcpStream;
+use std::io::{BufRead, BufReader, Read, Write};
+use std::net::TcpListener;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
@@ -46,17 +46,6 @@ impl DockerEnvironment {
 
         // Wait for services to be ready.
         wait_for_healthy(&compose_file);
-        
-        let port = match service {
-            "kafka" => 9092,
-            "amqp" => 5672,
-            "postgres" => 5432,
-            _ => 0,
-        };
-        
-        if port > 0 {
-            wait_for_port(port);
-        }
 
         Self { compose_file, _guard }
     }
@@ -96,18 +85,6 @@ fn wait_for_healthy(compose_file: &str) {
     panic!("Services in {} did not become healthy in time", compose_file);
 }
 
-fn wait_for_port(port: u16) {
-    let start = std::time::Instant::now();
-    let timeout = Duration::from_secs(30);
-    while start.elapsed() < timeout {
-        if TcpStream::connect(("127.0.0.1", port)).is_ok() {
-            return;
-        }
-        thread::sleep(Duration::from_millis(500));
-    }
-    eprintln!("Warning: Port {} did not become available in 30s", port);
-}
-
 // Note: Run these tests with `cargo test -- --test-threads=1 --ignored` to ensure
 // sequential execution (avoiding port conflicts) and to include these ignored tests.
 
@@ -116,7 +93,9 @@ fn run_publish_test(config_yaml: &str, tool_name: &str) {
     let config_path = std::env::temp_dir().join(format!("mcp_test_{}.yml", tool_name));
     std::fs::write(&config_path, config_yaml).expect("Failed to write test config");
 
-    let bin_path = env!("CARGO_BIN_EXE_mq-bridge-mcp");
+    let bin_path_env = std::env::var("MQ_BRIDGE_BINARY").ok();
+    let bin_path_default = env!("CARGO_BIN_EXE_mq-bridge-mcp");
+    let bin_path = bin_path_env.as_deref().unwrap_or(bin_path_default);
 
     let mut child = Command::new(bin_path)
         .arg("--config")
@@ -225,4 +204,119 @@ publishers:
 "#;
 
     run_publish_test(config, "publish_to_postgres_test");
+}
+
+#[test]
+fn test_file_integration() {
+    // No Docker needed for file test
+    let temp_file = std::env::temp_dir().join(format!("mq_test_{}.txt", fast_uuid_v7::gen_id_str()));
+    let file_path_str = temp_file.to_string_lossy().replace('\\', "/");
+
+    let config = format!(r#"
+mcp:
+  transport: stdio
+publishers:
+  file_test:
+    file:
+      path: "{}"
+      format: raw
+    description: "Integration Test File"
+"#, file_path_str);
+
+    run_publish_test(&config, "publish_to_file_test");
+
+    // Verify content
+    let content = std::fs::read_to_string(&temp_file).expect("Failed to read output file");
+    assert!(content.contains("hello from integration test"));
+    
+    // Cleanup
+    let _ = std::fs::remove_file(temp_file);
+}
+
+#[test]
+fn test_http_integration() {
+    // Start a simple TCP listener to act as the HTTP server
+    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to free port");
+    let port = listener.local_addr().unwrap().port();
+    
+    // Spawn a thread to handle the incoming request
+    thread::spawn(move || {
+        for stream in listener.incoming() {
+            if let Ok(mut stream) = stream {
+                let mut buf = [0; 1024];
+                let _ = stream.read(&mut buf);
+                let response = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
+                let _ = stream.write_all(response.as_bytes());
+                return; // Handle one request and exit
+            }
+        }
+    });
+
+    let config = format!(r#"
+mcp:
+  transport: stdio
+publishers:
+  http_test:
+    http:
+      url: "http://127.0.0.1:{}"
+    description: "Integration Test HTTP"
+"#, port);
+
+    run_publish_test(&config, "publish_to_http_test");
+}
+
+#[test]
+fn test_mongodb_integration() {
+    let _env = DockerEnvironment::new("mongodb");
+
+    let config = r#"
+mcp:
+  transport: stdio
+publishers:
+  mongo_test:
+    mongodb:
+      url: "mongodb://admin:password@localhost:27017/?authSource=admin"
+      database: "testdb"
+      collection: "messages"
+    description: "Integration Test MongoDB"
+"#;
+
+    run_publish_test(config, "publish_to_mongo_test");
+}
+
+#[test]
+fn test_nats_integration() {
+    let _env = DockerEnvironment::new("nats");
+
+    let config = r#"
+mcp:
+  transport: stdio
+publishers:
+  nats_test:
+    nats:
+      url: "nats://localhost:4222"
+      subject: "test.subject"
+      no_jetstream: true
+    description: "Integration Test NATS"
+"#;
+
+    run_publish_test(config, "publish_to_nats_test");
+}
+
+#[test]
+fn test_mqtt_integration() {
+    let _env = DockerEnvironment::new("mqtt");
+
+    let config = r#"
+mcp:
+  transport: stdio
+publishers:
+  mqtt_test:
+    mqtt:
+      url: "tcp://localhost:1883"
+      topic: "test/topic"
+    description: "Integration Test MQTT"
+"#;
+
+    run_publish_test(config, "publish_to_mqtt_test");
 }

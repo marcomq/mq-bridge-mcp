@@ -2979,6 +2979,7 @@ dependencies = [
  "axum-server",
  "clap",
  "config",
+ "fast-uuid-v7",
  "mq-bridge",
  "rdkafka",
  "rmcp",

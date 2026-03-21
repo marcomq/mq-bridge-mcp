@@ -4,9 +4,12 @@ services:
     container_name: mongodb-itest-mq-bridge
     ports:
       - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
     command: mongod --bind_ip_all
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: echo 'db.runCommand("ping").ok' | mongosh --username admin --password password --authenticationDatabase admin localhost:27017/test --quiet
       interval: 5s
       timeout: 10s
       retries: 5
