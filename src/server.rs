@@ -99,8 +99,8 @@ impl SubscriptionManager {
             return;
         }
 
-        if let Some(consumer_name) = uri.strip_prefix("mq://") {
-            if let Some(def) = self.consumers.get(consumer_name) {
+        if let Some(consumer_name) = uri.strip_prefix("mq://")
+            && let Some(def) = self.consumers.get(consumer_name) {
                 if matches!(def.watcher_mode, WatcherMode::None) {
                     return;
                 }
@@ -160,7 +160,6 @@ impl SubscriptionManager {
                     manager.active_watchers.write().await.remove(&uri_clone);
                 });
             }
-        }
     }
 }
 

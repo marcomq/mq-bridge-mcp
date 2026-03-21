@@ -84,12 +84,11 @@ async fn main() -> anyhow::Result<()> {
             println!("{}", schema_json);
         } else {
             let path = std::path::Path::new(&schema_path);
-            if let Some(parent) = path.parent() {
-                if !parent.as_os_str().is_empty() && !parent.exists() {
+            if let Some(parent) = path.parent()
+                && !parent.as_os_str().is_empty() && !parent.exists() {
                     std::fs::create_dir_all(parent)
                         .context("Failed to create parent directory for schema")?;
                 }
-            }
             std::fs::write(path, schema_json).context("Failed to write schema file")?;
         }
         return Ok(());
