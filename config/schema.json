@@ -1,0 +1,2675 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "McpAppConfig",
+  "type": "object",
+  "properties": {
+    "consumers": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/ConsumerConfig"
+      },
+      "default": {}
+    },
+    "log_level": {
+      "type": "string",
+      "default": "info"
+    },
+    "logger": {
+      "type": "string",
+      "default": ""
+    },
+    "mcp": {
+      "$ref": "#/$defs/McpConfig",
+      "default": {
+        "auth": "none",
+        "bind": "",
+        "consume_timeout_ms": 0,
+        "enabled": false,
+        "tls": null,
+        "transport": "stdio"
+      }
+    },
+    "publishers": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/PublisherConfig"
+      },
+      "default": {}
+    }
+  },
+  "$defs": {
+    "AmqpConfig": {
+      "description": "General AMQP connection configuration.",
+      "type": "object",
+      "properties": {
+        "delayed_ack": {
+          "description": "(Publisher only) If true, do not wait for an acknowledgement when sending to broker. Defaults to false.",
+          "type": "boolean",
+          "default": false
+        },
+        "exchange": {
+          "description": "The exchange to publish to or bind the queue to.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "no_declare_queue": {
+          "description": "(Publisher only) If true, do not attempt to declare the queue. Assumes the queue already exists. Defaults to false.",
+          "type": "boolean",
+          "default": false
+        },
+        "no_persistence": {
+          "description": "If true, declare queues as non-durable (transient). Defaults to false. Affects both Consumer (queue durability) and Publisher (message persistence).",
+          "type": "boolean",
+          "default": false
+        },
+        "password": {
+          "description": "Optional password for authentication.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "prefetch_count": {
+          "description": "(Consumer only) Number of messages to prefetch. Defaults to 100.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "queue": {
+          "description": "The AMQP queue name.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "subscribe_mode": {
+          "description": "(Consumer only) If true, act as a **Subscriber** (fan-out). Defaults to false.",
+          "type": "boolean",
+          "default": false
+        },
+        "tls": {
+          "description": "TLS configuration.",
+          "$ref": "#/$defs/TlsConfig",
+          "default": {
+            "accept_invalid_certs": false,
+            "ca_file": null,
+            "cert_file": null,
+            "cert_password": null,
+            "key_file": null,
+            "required": false
+          }
+        },
+        "url": {
+          "description": "AMQP connection URI. The `lapin` client connects to a single host specified in the URI.\nFor high availability, provide the address of a load balancer or use DNS resolution\nthat points to multiple brokers. Example: \"amqp://localhost:5672/vhost\".",
+          "type": "string"
+        },
+        "username": {
+          "description": "Optional username for authentication.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ]
+    },
+    "ApiKeyAuth": {
+      "description": "API Key authentication details.",
+      "type": "object",
+      "properties": {
+        "header": {
+          "description": "The HTTP header to check for the API key. Defaults to \"Authorization\".",
+          "type": "string",
+          "default": ""
+        },
+        "key": {
+          "description": "The secret API key or token.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "AwsConfig": {
+      "type": "object",
+      "properties": {
+        "access_key": {
+          "description": "AWS Access Key ID.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "endpoint_url": {
+          "description": "Custom endpoint URL (e.g., for LocalStack).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "max_messages": {
+          "description": "(Consumer only) Maximum number of messages to receive in a batch (1-10).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int32",
+          "maximum": 10,
+          "minimum": 1
+        },
+        "queue_url": {
+          "description": "The SQS queue URL. Required for Consumer. Optional for Publisher if `topic_arn` is set.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "region": {
+          "description": "AWS Region (e.g., \"us-east-1\").",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "secret_key": {
+          "description": "AWS Secret Access Key.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "session_token": {
+          "description": "AWS Session Token.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "topic_arn": {
+          "description": "(Publisher only) The SNS topic ARN.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "wait_time_seconds": {
+          "description": "(Consumer only) Wait time for long polling in seconds (0-20).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int32",
+          "maximum": 20,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConsumerConfig": {
+      "description": "Represents a connection point for messages, which can be a source (input) or a sink (output).",
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "default": ""
+        },
+        "idempotent": {
+          "type": "boolean",
+          "default": false
+        },
+        "middlewares": {
+          "description": "(Optional) A list of middlewares to apply to the endpoint.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Middleware"
+          }
+        },
+        "open_world": {
+          "type": "boolean",
+          "default": false
+        },
+        "peek_delay_ms": {
+          "type": "integer",
+          "format": "uint64",
+          "default": 1000,
+          "minimum": 0
+        },
+        "read_only": {
+          "type": "boolean",
+          "default": false
+        },
+        "watcher_mode": {
+          "$ref": "#/$defs/WatcherMode",
+          "default": "none"
+        }
+      },
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "aws": {
+              "$ref": "#/$defs/AwsConfig"
+            }
+          },
+          "required": [
+            "aws"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kafka": {
+              "$ref": "#/$defs/KafkaConfig"
+            }
+          },
+          "required": [
+            "kafka"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "nats": {
+              "$ref": "#/$defs/NatsConfig"
+            }
+          },
+          "required": [
+            "nats"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "file": {
+              "$ref": "#/$defs/FileConfig"
+            }
+          },
+          "required": [
+            "file"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "static": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "static"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ref": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ref"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "memory": {
+              "$ref": "#/$defs/MemoryConfig"
+            }
+          },
+          "required": [
+            "memory"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sled": {
+              "$ref": "#/$defs/SledConfig"
+            }
+          },
+          "required": [
+            "sled"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "amqp": {
+              "$ref": "#/$defs/AmqpConfig"
+            }
+          },
+          "required": [
+            "amqp"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mongodb": {
+              "$ref": "#/$defs/MongoDbConfig"
+            }
+          },
+          "required": [
+            "mongodb"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mqtt": {
+              "$ref": "#/$defs/MqttConfig"
+            }
+          },
+          "required": [
+            "mqtt"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "http": {
+              "$ref": "#/$defs/HttpConfig"
+            }
+          },
+          "required": [
+            "http"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ibmmq": {
+              "$ref": "#/$defs/IbmMqConfig"
+            }
+          },
+          "required": [
+            "ibmmq"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "zeromq": {
+              "$ref": "#/$defs/ZeroMqConfig"
+            }
+          },
+          "required": [
+            "zeromq"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "grpc": {
+              "$ref": "#/$defs/GrpcConfig"
+            }
+          },
+          "required": [
+            "grpc"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sqlx": {
+              "$ref": "#/$defs/SqlxConfig"
+            }
+          },
+          "required": [
+            "sqlx"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "fanout": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Endpoint"
+              }
+            }
+          },
+          "required": [
+            "fanout"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "switch": {
+              "$ref": "#/$defs/SwitchConfig"
+            }
+          },
+          "required": [
+            "switch"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "response": {
+              "$ref": "#/$defs/ResponseConfig"
+            }
+          },
+          "required": [
+            "response"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "reader": {
+              "$ref": "#/$defs/Endpoint"
+            }
+          },
+          "required": [
+            "reader"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "custom": {
+              "type": "object",
+              "properties": {
+                "config": true,
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "config"
+              ]
+            }
+          },
+          "required": [
+            "custom"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "null": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "null"
+          ]
+        }
+      ]
+    },
+    "DeadLetterQueueMiddleware": {
+      "description": "Dead-Letter Queue (DLQ) middleware configuration.\n\nRoutes failed messages to a designated endpoint for later analysis and recovery.\nIt is recommended to pair this with the Retry middleware to avoid message loss.\n\nFailed messages are sent to the configured endpoint when they are exhausted after retry attempts.",
+      "type": "object",
+      "properties": {
+        "endpoint": {
+          "description": "The endpoint to send failed messages to.",
+          "$ref": "#/$defs/Endpoint"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "endpoint"
+      ]
+    },
+    "DeduplicationMiddleware": {
+      "description": "Deduplication middleware configuration.\n\nPrevents duplicate messages from being processed using a Sled-backed database.\nMessages are identified by their deduplication key and removed after the TTL expires.",
+      "type": "object",
+      "properties": {
+        "sled_path": {
+          "description": "Path to the Sled database directory.",
+          "type": "string"
+        },
+        "ttl_seconds": {
+          "description": "Time-to-live for deduplication entries in seconds.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "sled_path",
+        "ttl_seconds"
+      ]
+    },
+    "DelayMiddleware": {
+      "description": "Delay middleware configuration.\n\nIntroduces a fixed delay before processing each message.\nUseful for rate limiting, testing, or allowing time for dependent systems to become ready.",
+      "type": "object",
+      "properties": {
+        "delay_ms": {
+          "description": "Delay duration in milliseconds.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "delay_ms"
+      ]
+    },
+    "Endpoint": {
+      "description": "Represents a connection point for messages, which can be a source (input) or a sink (output).",
+      "type": "object",
+      "properties": {
+        "middlewares": {
+          "description": "(Optional) A list of middlewares to apply to the endpoint.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Middleware"
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "aws": {
+              "$ref": "#/$defs/AwsConfig"
+            }
+          },
+          "required": [
+            "aws"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kafka": {
+              "$ref": "#/$defs/KafkaConfig"
+            }
+          },
+          "required": [
+            "kafka"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "nats": {
+              "$ref": "#/$defs/NatsConfig"
+            }
+          },
+          "required": [
+            "nats"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "file": {
+              "$ref": "#/$defs/FileConfig"
+            }
+          },
+          "required": [
+            "file"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "static": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "static"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ref": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ref"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "memory": {
+              "$ref": "#/$defs/MemoryConfig"
+            }
+          },
+          "required": [
+            "memory"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sled": {
+              "$ref": "#/$defs/SledConfig"
+            }
+          },
+          "required": [
+            "sled"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "amqp": {
+              "$ref": "#/$defs/AmqpConfig"
+            }
+          },
+          "required": [
+            "amqp"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mongodb": {
+              "$ref": "#/$defs/MongoDbConfig"
+            }
+          },
+          "required": [
+            "mongodb"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mqtt": {
+              "$ref": "#/$defs/MqttConfig"
+            }
+          },
+          "required": [
+            "mqtt"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "http": {
+              "$ref": "#/$defs/HttpConfig"
+            }
+          },
+          "required": [
+            "http"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ibmmq": {
+              "$ref": "#/$defs/IbmMqConfig"
+            }
+          },
+          "required": [
+            "ibmmq"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "zeromq": {
+              "$ref": "#/$defs/ZeroMqConfig"
+            }
+          },
+          "required": [
+            "zeromq"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "grpc": {
+              "$ref": "#/$defs/GrpcConfig"
+            }
+          },
+          "required": [
+            "grpc"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sqlx": {
+              "$ref": "#/$defs/SqlxConfig"
+            }
+          },
+          "required": [
+            "sqlx"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "fanout": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Endpoint"
+              }
+            }
+          },
+          "required": [
+            "fanout"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "switch": {
+              "$ref": "#/$defs/SwitchConfig"
+            }
+          },
+          "required": [
+            "switch"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "response": {
+              "$ref": "#/$defs/ResponseConfig"
+            }
+          },
+          "required": [
+            "response"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "reader": {
+              "$ref": "#/$defs/Endpoint"
+            }
+          },
+          "required": [
+            "reader"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "custom": {
+              "type": "object",
+              "properties": {
+                "config": true,
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "config"
+              ]
+            }
+          },
+          "required": [
+            "custom"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "null": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "null"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "FaultMode": {
+      "description": "Fault injection modes for testing error handling and recovery mechanisms.",
+      "oneOf": [
+        {
+          "description": "Trigger a thread panic.",
+          "type": "string",
+          "const": "panic"
+        },
+        {
+          "description": "Simulate a connection/network error (retryable).",
+          "type": "string",
+          "const": "disconnect"
+        },
+        {
+          "description": "Simulate a timeout error (retryable).",
+          "type": "string",
+          "const": "timeout"
+        },
+        {
+          "description": "Simulate a JSON format error (non-retryable).",
+          "type": "string",
+          "const": "json_format_error"
+        },
+        {
+          "description": "Return a negative acknowledgement (for handlers).",
+          "type": "string",
+          "const": "nack"
+        }
+      ]
+    },
+    "FileConfig": {
+      "type": "object",
+      "properties": {
+        "delimiter": {
+          "description": "Optional delimiter for messages. Defaults to newline (\"\\n\").\nCan be a string or a hex sequence (e.g. \"0x00\").\nCurrently only single-byte delimiters are supported.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "format": {
+          "description": "The format for writing messages to the file (Publisher) or interpreting them (Consumer). Defaults to `normal`.",
+          "$ref": "#/$defs/FileFormat",
+          "default": "normal"
+        },
+        "path": {
+          "description": "Path to the file.",
+          "type": "string"
+        }
+      },
+      "anyOf": [
+        {
+          "oneOf": [
+            {
+              "description": "**Queue Mode**: Reads from the beginning of the file.",
+              "type": "object",
+              "properties": {
+                "delete": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "mode": {
+                  "type": "string",
+                  "const": "consume"
+                }
+              },
+              "required": [
+                "mode"
+              ]
+            },
+            {
+              "description": "**Broadcast Mode**: Tails the file (starts at the end).",
+              "type": "object",
+              "properties": {
+                "delete": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "mode": {
+                  "type": "string",
+                  "const": "subscribe"
+                }
+              },
+              "required": [
+                "mode"
+              ]
+            },
+            {
+              "description": "**Persistent Mode**: Reads the file with offset tracking.",
+              "type": "object",
+              "properties": {
+                "group_id": {
+                  "description": "The consumer group ID that is used for offset tracking. Should be unique.",
+                  "type": "string"
+                },
+                "mode": {
+                  "type": "string",
+                  "const": "group_subscribe"
+                },
+                "read_from_tail": {
+                  "description": "If true, starts reading from the end of the file if no offset is stored.\nIf false, starts reading from the beginning.",
+                  "type": "boolean",
+                  "default": false
+                }
+              },
+              "required": [
+                "mode",
+                "group_id"
+              ]
+            }
+          ]
+        },
+        {}
+      ],
+      "required": [
+        "path"
+      ]
+    },
+    "FileFormat": {
+      "description": "Format for messages written to or read from a file.",
+      "oneOf": [
+        {
+          "description": "The full `CanonicalMessage` is serialized to JSON. Payload is a byte array.",
+          "type": "string",
+          "const": "normal"
+        },
+        {
+          "description": "The full `CanonicalMessage` is serialized to JSON. Payload is rendered as a JSON value if possible.",
+          "type": "string",
+          "const": "json"
+        },
+        {
+          "description": "The full `CanonicalMessage` is serialized to JSON. Payload is rendered as a string if possible.",
+          "type": "string",
+          "const": "text"
+        },
+        {
+          "description": "The raw payload of the message is written. For consumers, the line is read as raw bytes.",
+          "type": "string",
+          "const": "raw"
+        }
+      ]
+    },
+    "GrpcConfig": {
+      "type": "object",
+      "properties": {
+        "timeout_ms": {
+          "description": "Timeout in milliseconds.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "tls": {
+          "description": "TLS configuration.",
+          "$ref": "#/$defs/TlsConfig",
+          "default": {
+            "accept_invalid_certs": false,
+            "ca_file": null,
+            "cert_file": null,
+            "cert_password": null,
+            "key_file": null,
+            "required": false
+          }
+        },
+        "topic": {
+          "description": "The topic to subscribe to.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "description": "The gRPC server URL (e.g., \"http://localhost:50051\").",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ]
+    },
+    "HttpConfig": {
+      "description": "General HTTP connection configuration.",
+      "type": "object",
+      "properties": {
+        "basic_auth": {
+          "description": "HTTP Basic Authentication credentials (username, password). For consumers: validates incoming requests. For publishers: adds Authorization header.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "batch_concurrency": {
+          "description": "(Publisher only) The number of concurrent HTTP requests to send in a batch. Defaults to 20.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0
+        },
+        "compression_enabled": {
+          "description": "Enable gzip compression for request/response bodies exceeding the threshold. Defaults to false.",
+          "type": "boolean",
+          "default": false
+        },
+        "compression_threshold_bytes": {
+          "description": "Minimum message size in bytes to compress. Messages smaller than this are sent uncompressed. Defaults to 1024 bytes.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "default": null,
+          "minimum": 0
+        },
+        "custom_headers": {
+          "description": "Custom headers as key-value pairs (e.g., {\"X-API-Key\": \"token123\"}). Added to outgoing HTTP headers for both consumers and publishers.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "fire_and_forget": {
+          "description": "(Consumer only) If true, respond immediately with 202 Accepted without waiting for downstream processing. Defaults to false.",
+          "type": "boolean",
+          "default": false
+        },
+        "internal_buffer_size": {
+          "description": "(Consumer only) Internal buffer size for the channel. Defaults to 100.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0
+        },
+        "message_id_header": {
+          "description": "(Consumer only) Header key to extract the message ID from. Defaults to \"message-id\".",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pool_idle_timeout_ms": {
+          "description": "(Publisher only) Timeout for idle connections in the connection pool in milliseconds. Defaults to 90000ms.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "request_timeout_ms": {
+          "description": "Timeout for HTTP requests in milliseconds. For consumers, it's the request-reply timeout. For publishers, it's the timeout for each individual request. Defaults to 30000ms.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "tcp_keepalive_ms": {
+          "description": "(Publisher only) TCP keepalive timeout for the underlying connection pool in milliseconds. Defaults to 60000ms.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "tls": {
+          "description": "TLS configuration.",
+          "$ref": "#/$defs/TlsConfig",
+          "default": {
+            "accept_invalid_certs": false,
+            "ca_file": null,
+            "cert_file": null,
+            "cert_password": null,
+            "key_file": null,
+            "required": false
+          }
+        },
+        "url": {
+          "description": "For consumers, the listen address (e.g., \"0.0.0.0:8080\"). For publishers, the target URL.",
+          "type": "string"
+        },
+        "workers": {
+          "description": "(Consumer only) Number of worker threads to use. Defaults to 0 for unlimited.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ]
+    },
+    "IbmMqConfig": {
+      "description": "Connection settings for the IBM MQ Queue Manager.",
+      "type": "object",
+      "properties": {
+        "channel": {
+          "description": "Required. Server Connection (SVRCONN) Channel name defined on the QM.",
+          "type": "string"
+        },
+        "cipher_spec": {
+          "description": "TLS CipherSpec (e.g., `ANY_TLS12`). Optional; required for encrypted connections.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "internal_buffer_size": {
+          "description": "Internal buffer size for the channel. Defaults to 100.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "default": null,
+          "minimum": 0
+        },
+        "max_message_size": {
+          "description": "Maximum message size in bytes (default: 4MB). Optional.",
+          "type": "integer",
+          "format": "uint",
+          "default": 4194304,
+          "minimum": 0
+        },
+        "password": {
+          "description": "Password for authentication. Optional; required if the channel enforces authentication.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "queue": {
+          "description": "Target Queue name for point-to-point messaging. Optional if `topic` is set; defaults to route name if omitted.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "queue_manager": {
+          "description": "Required. Name of the Queue Manager to connect to (e.g., `QM1`).",
+          "type": "string"
+        },
+        "tls": {
+          "description": "TLS configuration settings (e.g., keystore paths). Optional.",
+          "$ref": "#/$defs/TlsConfig",
+          "default": {
+            "accept_invalid_certs": false,
+            "ca_file": null,
+            "cert_file": null,
+            "cert_password": null,
+            "key_file": null,
+            "required": false
+          }
+        },
+        "topic": {
+          "description": "Target Topic string for Publish/Subscribe. If set, enables **Subscriber mode** (Consumer) or publishes to a topic (Publisher). Optional if `queue` is set.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "description": "Required. Connection URL in `host(port)` format. Supports comma-separated list for failover (e.g., `host1(1414),host2(1414)`).",
+          "type": "string"
+        },
+        "username": {
+          "description": "Username for authentication. Optional; required if the channel enforces authentication.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "wait_timeout_ms": {
+          "description": "(Consumer only) Polling timeout in milliseconds (default: 1000ms). Optional.",
+          "type": "integer",
+          "format": "int32",
+          "default": 1000
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "queue_manager",
+        "channel"
+      ]
+    },
+    "KafkaConfig": {
+      "description": "General Kafka connection configuration.",
+      "type": "object",
+      "properties": {
+        "consumer_options": {
+          "description": "(Consumer only) Additional librdkafka consumer configuration options (key-value pairs).",
+          "type": [
+            "array",
+            "null"
+          ],
+          "default": null,
+          "items": {
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "delayed_ack": {
+          "description": "(Publisher only) If true, do not wait for an acknowledgement when sending to broker. Defaults to false.",
+          "type": "boolean",
+          "default": false
+        },
+        "group_id": {
+          "description": "(Consumer only) Consumer group ID.\nIf not provided, the consumer acts in **Subscriber mode**: it generates a unique, ephemeral group ID and starts consuming from the latest offset.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "password": {
+          "description": "Optional password for SASL authentication.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "producer_options": {
+          "description": "(Publisher only) Additional librdkafka producer configuration options (key-value pairs).",
+          "type": [
+            "array",
+            "null"
+          ],
+          "default": null,
+          "items": {
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "tls": {
+          "description": "TLS configuration.",
+          "$ref": "#/$defs/TlsConfig",
+          "default": {
+            "accept_invalid_certs": false,
+            "ca_file": null,
+            "cert_file": null,
+            "cert_password": null,
+            "key_file": null,
+            "required": false
+          }
+        },
+        "topic": {
+          "description": "The Kafka topic to produce to or consume from.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "description": "Comma-separated list of Kafka broker URLs.",
+          "type": "string"
+        },
+        "username": {
+          "description": "Optional username for SASL authentication.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ]
+    },
+    "McpAuth": {
+      "description": "Authentication methods for the MCP server.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "none"
+          ]
+        },
+        {
+          "description": "API Key authentication.",
+          "type": "object",
+          "properties": {
+            "api_key": {
+              "$ref": "#/$defs/ApiKeyAuth"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "api_key"
+          ]
+        }
+      ]
+    },
+    "McpConfig": {
+      "description": "Configuration for the Marco's Control Plane (MCP) server.\nMCP provides a remote API for interacting with and managing the bridge.",
+      "type": "object",
+      "properties": {
+        "auth": {
+          "description": "Authentication settings for the server. If not present, no auth is used.",
+          "$ref": "#/$defs/McpAuth",
+          "default": "none"
+        },
+        "bind": {
+          "description": "The address to bind the server to (e.g., \"0.0.0.0:9092\").",
+          "type": "string",
+          "default": ""
+        },
+        "consume_timeout_ms": {
+          "description": "Optional timeout for consuming messages (in milliseconds).",
+          "type": "integer",
+          "format": "uint64",
+          "default": 0,
+          "minimum": 0
+        },
+        "enabled": {
+          "description": "If true, the MCP server is enabled.",
+          "type": "boolean",
+          "default": false
+        },
+        "tls": {
+          "description": "Optional TLS configuration for the server.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TlsConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "transport": {
+          "description": "The transport protocol to use for the server.",
+          "$ref": "#/$defs/McpTransport",
+          "default": "stdio"
+        }
+      }
+    },
+    "McpTransport": {
+      "description": "Transport protocol for the MCP server.",
+      "oneOf": [
+        {
+          "description": "Use a streamable HTTP transport, which supports Server-Sent Events (SSE).",
+          "type": "string",
+          "const": "streamable_http"
+        },
+        {
+          "description": "Use standard input/output for communication.",
+          "type": "string",
+          "const": "stdio"
+        }
+      ]
+    },
+    "MemoryConfig": {
+      "type": "object",
+      "properties": {
+        "capacity": {
+          "description": "The capacity of the channel. Defaults to 100.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0
+        },
+        "enable_nack": {
+          "description": "(Consumer only) If true, enables NACK support (re-queuing), which requires cloning messages. Defaults to false.",
+          "type": "boolean",
+          "default": false
+        },
+        "request_reply": {
+          "description": "(Publisher only) If true, send() waits for a response.",
+          "type": "boolean",
+          "default": false
+        },
+        "request_timeout_ms": {
+          "description": "(Publisher only) Timeout for request-reply operations in milliseconds. Defaults to 30000ms.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "subscribe_mode": {
+          "description": "(Consumer only) If true, act as a **Subscriber** (fan-out). Defaults to false (queue).",
+          "type": "boolean",
+          "default": false
+        },
+        "topic": {
+          "description": "The topic name for the in-memory channel.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "topic"
+      ]
+    },
+    "MetricsMiddleware": {
+      "description": "Metrics middleware configuration.\n\nEnables collection and reporting of message processing metrics such as throughput,\nlatency, and error rates. The presence of this middleware in the configuration\nenables metrics collection for the endpoint.\n\nMetrics are typically exported via Prometheus or similar monitoring systems.",
+      "type": "object",
+      "additionalProperties": false
+    },
+    "Middleware": {
+      "description": "An enumeration of all supported middleware types.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "deduplication": {
+              "$ref": "#/$defs/DeduplicationMiddleware"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "deduplication"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "metrics": {
+              "$ref": "#/$defs/MetricsMiddleware"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "metrics"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "dlq": {
+              "$ref": "#/$defs/DeadLetterQueueMiddleware"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "dlq"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "retry": {
+              "$ref": "#/$defs/RetryMiddleware"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "retry"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "random_panic": {
+              "$ref": "#/$defs/RandomPanicMiddleware"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "random_panic"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "delay": {
+              "$ref": "#/$defs/DelayMiddleware"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "delay"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "weak_join": {
+              "$ref": "#/$defs/WeakJoinMiddleware"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "weak_join"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "custom": {
+              "type": "object",
+              "properties": {
+                "config": true,
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "config"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "custom"
+          ]
+        }
+      ]
+    },
+    "MongoDbConfig": {
+      "description": "General MongoDB connection configuration.",
+      "type": "object",
+      "properties": {
+        "capped_size_bytes": {
+          "description": "(Publisher only) If set, creates a capped collection with this size in bytes.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int64"
+        },
+        "change_stream": {
+          "description": "(Consumer only) If true, use Change Streams (**Subscriber mode**). Defaults to false (polling/consumer mode).",
+          "type": "boolean",
+          "default": false
+        },
+        "collection": {
+          "description": "The MongoDB collection name.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cursor_id": {
+          "description": "The ID used for the cursor in sequenced mode. If not provided, consumption starts from the current sequence (ephemeral).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "database": {
+          "description": "The database name.",
+          "type": "string"
+        },
+        "format": {
+          "description": "Format for storing messages. Defaults to Normal.",
+          "$ref": "#/$defs/MongoDbFormat",
+          "default": "normal"
+        },
+        "password": {
+          "description": "Optional password. Takes precedence over any credentials embedded in the `url`.\nUse embedded URL credentials for simple one-off connections but prefer explicit username/password fields (or environment-sourced secrets) for clarity and secret management in production.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "polling_interval_ms": {
+          "description": "(Consumer only) Polling interval in milliseconds for the consumer (when not using Change Streams). Defaults to 100ms.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "reply_polling_ms": {
+          "description": "(Publisher only) Polling interval in milliseconds for the publisher when waiting for a reply. Defaults to 50ms.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "request_reply": {
+          "description": "(Publisher only) If true, the publisher will wait for a response in a dedicated collection. Defaults to false.",
+          "type": "boolean",
+          "default": false
+        },
+        "request_timeout_ms": {
+          "description": "(Publisher only) Timeout for request-reply operations in milliseconds. Defaults to 30000ms.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "tls": {
+          "description": "TLS configuration.",
+          "$ref": "#/$defs/TlsConfig",
+          "default": {
+            "accept_invalid_certs": false,
+            "ca_file": null,
+            "cert_file": null,
+            "cert_password": null,
+            "key_file": null,
+            "required": false
+          }
+        },
+        "ttl_seconds": {
+          "description": "(Publisher only) TTL in seconds for documents created by the publisher. If set, a TTL index is created.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "url": {
+          "description": "MongoDB connection string URI. Can contain a comma-separated list of hosts for a replica set.\nCredentials provided via the separate `username` and `password` fields take precedence over any credentials embedded in the URL.",
+          "type": "string"
+        },
+        "username": {
+          "description": "Optional username. Takes precedence over any credentials embedded in the `url`.\nUse embedded URL credentials for simple one-off connections but prefer explicit username/password fields (or environment-sourced secrets) for clarity and secret management in production.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "database"
+      ]
+    },
+    "MongoDbFormat": {
+      "description": "MongoDB message storage format.\n\nDetermines how messages are stored and retrieved from MongoDB collections.",
+      "type": "string",
+      "enum": [
+        "normal",
+        "json",
+        "text",
+        "raw"
+      ]
+    },
+    "MqttConfig": {
+      "description": "General MQTT connection configuration.",
+      "type": "object",
+      "properties": {
+        "clean_session": {
+          "description": "(Consumer only) If true, start with a clean session. Defaults to false (persistent session). Setting this to true effectively enables **Subscriber mode** (ephemeral).",
+          "type": "boolean",
+          "default": false
+        },
+        "client_id": {
+          "description": "Optional client ID. If not provided, one is generated or derived from route name.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "delayed_ack": {
+          "description": "(Consumer only) If true, messages are acknowledged immediately upon receipt (auto-ack).\nIf false (default), messages are acknowledged after processing (manual-ack).\nNote: This setting does not currently enable synchronous publishing (waiting for PubAck) for the MQTT publisher.",
+          "type": "boolean",
+          "default": false
+        },
+        "keep_alive_seconds": {
+          "description": "Keep-alive interval in seconds. Defaults to 20.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "max_inflight": {
+          "description": "Maximum number of inflight messages.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "password": {
+          "description": "Optional password for authentication.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "protocol": {
+          "description": "MQTT protocol version (V3 or V5). Defaults to V5.",
+          "$ref": "#/$defs/MqttProtocol",
+          "default": "v5"
+        },
+        "qos": {
+          "description": "Quality of Service level (0, 1, or 2). Defaults to 1.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        },
+        "queue_capacity": {
+          "description": "Capacity of the internal channel for incoming messages. Defaults to 100.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0
+        },
+        "session_expiry_interval": {
+          "description": "Session expiry interval in seconds (MQTT v5 only).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "tls": {
+          "description": "TLS configuration.",
+          "$ref": "#/$defs/TlsConfig",
+          "default": {
+            "accept_invalid_certs": false,
+            "ca_file": null,
+            "cert_file": null,
+            "cert_password": null,
+            "key_file": null,
+            "required": false
+          }
+        },
+        "topic": {
+          "description": "The MQTT topic.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "description": "MQTT broker URL (e.g., \"tcp://localhost:1883\"). Does not support multiple hosts.",
+          "type": "string"
+        },
+        "username": {
+          "description": "Optional username for authentication.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ]
+    },
+    "MqttProtocol": {
+      "description": "MQTT protocol version.\n\nSpecifies which version of the MQTT protocol to use for connections.",
+      "type": "string",
+      "enum": [
+        "v5",
+        "v3"
+      ]
+    },
+    "NatsConfig": {
+      "description": "General NATS connection configuration.",
+      "type": "object",
+      "properties": {
+        "delayed_ack": {
+          "description": "(Publisher only) If true, do not wait for an acknowledgement when sending to broker. Defaults to false.",
+          "type": "boolean",
+          "default": false
+        },
+        "no_jetstream": {
+          "description": "If no_jetstream: true, use Core NATS (fire-and-forget) instead of JetStream. Defaults to false.",
+          "type": "boolean",
+          "default": false
+        },
+        "password": {
+          "description": "Optional password for authentication.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "prefetch_count": {
+          "description": "(Consumer only) Number of messages to prefetch from the consumer. Defaults to 10000.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0
+        },
+        "request_reply": {
+          "description": "(Publisher only) If true, the publisher uses the request-reply pattern.\nIt sends a request and waits for a response (using `core_client.request_with_headers()`).\nDefaults to false.",
+          "type": "boolean",
+          "default": false
+        },
+        "request_timeout_ms": {
+          "description": "(Publisher only) Timeout for request-reply operations in milliseconds. Defaults to 30000ms.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "stream": {
+          "description": "(Consumer only). The JetStream stream name. Required for Consumers.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "stream_max_bytes": {
+          "description": "(Publisher only) Maximum total bytes in the stream (if created by the bridge). Defaults to 1GB.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int64"
+        },
+        "stream_max_messages": {
+          "description": "(Publisher only) Maximum number of messages in the stream (if created by the bridge). Defaults to 1,000,000.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int64"
+        },
+        "subject": {
+          "description": "The NATS subject to publish to or subscribe to.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "subscriber_mode": {
+          "description": "(Consumer only) If true, use ephemeral **Subscriber mode**. Defaults to false (durable consumer).",
+          "type": "boolean",
+          "default": false
+        },
+        "tls": {
+          "description": "TLS configuration.",
+          "$ref": "#/$defs/TlsConfig",
+          "default": {
+            "accept_invalid_certs": false,
+            "ca_file": null,
+            "cert_file": null,
+            "cert_password": null,
+            "key_file": null,
+            "required": false
+          }
+        },
+        "token": {
+          "description": "Optional token for authentication.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "description": "Comma-separated list of NATS server URLs (e.g., \"nats://localhost:4222,nats://localhost:4223\").",
+          "type": "string"
+        },
+        "username": {
+          "description": "Optional username for authentication.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ]
+    },
+    "PayloadSchema": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "schema": true
+      },
+      "required": [
+        "name",
+        "description",
+        "schema"
+      ]
+    },
+    "PublisherConfig": {
+      "description": "Represents a connection point for messages, which can be a source (input) or a sink (output).",
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "default": ""
+        },
+        "destructive": {
+          "type": "boolean",
+          "default": false
+        },
+        "idempotent": {
+          "type": "boolean",
+          "default": false
+        },
+        "middlewares": {
+          "description": "(Optional) A list of middlewares to apply to the endpoint.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Middleware"
+          }
+        },
+        "open_world": {
+          "type": "boolean",
+          "default": false
+        },
+        "payload_schemas": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/PayloadSchema"
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "aws": {
+              "$ref": "#/$defs/AwsConfig"
+            }
+          },
+          "required": [
+            "aws"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kafka": {
+              "$ref": "#/$defs/KafkaConfig"
+            }
+          },
+          "required": [
+            "kafka"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "nats": {
+              "$ref": "#/$defs/NatsConfig"
+            }
+          },
+          "required": [
+            "nats"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "file": {
+              "$ref": "#/$defs/FileConfig"
+            }
+          },
+          "required": [
+            "file"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "static": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "static"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ref": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ref"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "memory": {
+              "$ref": "#/$defs/MemoryConfig"
+            }
+          },
+          "required": [
+            "memory"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sled": {
+              "$ref": "#/$defs/SledConfig"
+            }
+          },
+          "required": [
+            "sled"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "amqp": {
+              "$ref": "#/$defs/AmqpConfig"
+            }
+          },
+          "required": [
+            "amqp"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mongodb": {
+              "$ref": "#/$defs/MongoDbConfig"
+            }
+          },
+          "required": [
+            "mongodb"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mqtt": {
+              "$ref": "#/$defs/MqttConfig"
+            }
+          },
+          "required": [
+            "mqtt"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "http": {
+              "$ref": "#/$defs/HttpConfig"
+            }
+          },
+          "required": [
+            "http"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ibmmq": {
+              "$ref": "#/$defs/IbmMqConfig"
+            }
+          },
+          "required": [
+            "ibmmq"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "zeromq": {
+              "$ref": "#/$defs/ZeroMqConfig"
+            }
+          },
+          "required": [
+            "zeromq"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "grpc": {
+              "$ref": "#/$defs/GrpcConfig"
+            }
+          },
+          "required": [
+            "grpc"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sqlx": {
+              "$ref": "#/$defs/SqlxConfig"
+            }
+          },
+          "required": [
+            "sqlx"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "fanout": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Endpoint"
+              }
+            }
+          },
+          "required": [
+            "fanout"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "switch": {
+              "$ref": "#/$defs/SwitchConfig"
+            }
+          },
+          "required": [
+            "switch"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "response": {
+              "$ref": "#/$defs/ResponseConfig"
+            }
+          },
+          "required": [
+            "response"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "reader": {
+              "$ref": "#/$defs/Endpoint"
+            }
+          },
+          "required": [
+            "reader"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "custom": {
+              "type": "object",
+              "properties": {
+                "config": true,
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "config"
+              ]
+            }
+          },
+          "required": [
+            "custom"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "null": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "null"
+          ]
+        }
+      ]
+    },
+    "RandomPanicMiddleware": {
+      "description": "Middleware for fault injection testing.\n\nAllows testing error handling and recovery mechanisms by injecting faults\nat specific points in the message processing pipeline.\n\n# Examples\n\n```yaml\nrandom_panic:\n  mode: panic\n  trigger_on_message: 3  # Trigger on the 3rd message\n```",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Enable/disable the fault injection without removing the configuration.",
+          "type": "boolean",
+          "default": true
+        },
+        "mode": {
+          "description": "The type of fault to inject.",
+          "$ref": "#/$defs/FaultMode",
+          "default": "panic"
+        },
+        "trigger_on_message": {
+          "description": "Trigger the fault on the Nth message (1-indexed). None = trigger on every message.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "default": null,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "ResponseConfig": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "RetryMiddleware": {
+      "description": "Retry middleware configuration.\n\nImplements exponential backoff retry logic for failed message processing.\nFailed messages are automatically retried with increasing delays between attempts.",
+      "type": "object",
+      "properties": {
+        "initial_interval_ms": {
+          "description": "Initial retry interval in milliseconds. Defaults to 100ms.",
+          "type": "integer",
+          "format": "uint64",
+          "default": 100,
+          "minimum": 0
+        },
+        "max_attempts": {
+          "description": "Maximum number of retry attempts. Defaults to 3.",
+          "type": "integer",
+          "format": "uint",
+          "default": 3,
+          "minimum": 0
+        },
+        "max_interval_ms": {
+          "description": "Maximum retry interval in milliseconds. Defaults to 5000ms.",
+          "type": "integer",
+          "format": "uint64",
+          "default": 5000,
+          "minimum": 0
+        },
+        "multiplier": {
+          "description": "Multiplier for exponential backoff. Defaults to 2.0.",
+          "type": "number",
+          "format": "double",
+          "default": 2.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "SledConfig": {
+      "description": "General Sled database configuration",
+      "type": "object",
+      "properties": {
+        "delete_after_read": {
+          "description": "(Consumer only) If true, delete messages after processing (Queue mode).",
+          "type": "boolean",
+          "default": false
+        },
+        "path": {
+          "description": "Path to the Sled database directory.",
+          "type": "string"
+        },
+        "read_from_start": {
+          "description": "(Consumer only) If true, start reading from the beginning of the tree.",
+          "type": "boolean",
+          "default": false
+        },
+        "tree": {
+          "description": "The tree name to use as a queue. Defaults to \"default\".",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ]
+    },
+    "SqlxConfig": {
+      "description": "General SQLx connection configuration.",
+      "type": "object",
+      "properties": {
+        "acquire_timeout_ms": {
+          "description": "Timeout for acquiring a connection from the pool in milliseconds. Defaults to 30000ms.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "auto_create_table": {
+          "description": "(Publisher only) If true, automatically create the table and indexes if they don't exist. Defaults to false.",
+          "type": "boolean",
+          "default": false
+        },
+        "delete_after_read": {
+          "description": "(Consumer only) If true, delete messages after processing.",
+          "type": "boolean",
+          "default": false
+        },
+        "idle_timeout_ms": {
+          "description": "Maximum idle time for a connection in milliseconds. Defaults to 600000ms (10 minutes).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "insert_query": {
+          "description": "(Publisher only) Optional. A custom SQL INSERT query. Use `?` as a placeholder for the payload.\nIf not provided, a default `INSERT INTO {table} (payload) VALUES (?)` is used.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "max_connections": {
+          "description": "Maximum number of connections in the pool. Defaults to 10.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "max_lifetime_ms": {
+          "description": "Maximum lifetime of a connection in milliseconds. Defaults to 1800000ms (30 minutes).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "min_connections": {
+          "description": "Minimum number of connections to keep in the pool. Defaults to 0.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "password": {
+          "description": "Optional password. Takes precedence over any credentials embedded in the `url`.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "polling_interval_ms": {
+          "description": "(Consumer only) Polling interval in milliseconds. Defaults to 100ms.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "select_query": {
+          "description": "(Consumer only) Optional. A custom SQL SELECT query to fetch messages. This is only supported for PostgreSQL and Microsoft SQL Server.\nThe query must include a placeholder for the batch size (`$1` for PostgreSQL, `@p1` for SQL Server).\nThe bridge will bind the route's `batch_size` to this placeholder.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "table": {
+          "description": "The table to interact with.",
+          "type": "string"
+        },
+        "tls": {
+          "description": "TLS configuration for the database connection.",
+          "$ref": "#/$defs/TlsConfig",
+          "default": {
+            "accept_invalid_certs": false,
+            "ca_file": null,
+            "cert_file": null,
+            "cert_password": null,
+            "key_file": null,
+            "required": false
+          }
+        },
+        "url": {
+          "description": "Database connection URL.",
+          "type": "string"
+        },
+        "username": {
+          "description": "Optional username. Takes precedence over any credentials embedded in the `url`.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "table"
+      ]
+    },
+    "SwitchConfig": {
+      "type": "object",
+      "properties": {
+        "cases": {
+          "description": "A map of values to endpoints.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Endpoint"
+          }
+        },
+        "default": {
+          "description": "The default endpoint if no case matches.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Endpoint"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metadata_key": {
+          "description": "The metadata key to inspect for routing decisions.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "metadata_key",
+        "cases"
+      ]
+    },
+    "TlsConfig": {
+      "description": "TLS configuration for secure connections.\n\nConfigures Transport Layer Security (TLS/SSL) for encrypted communication.\nSupports both client certificate (mutual TLS) and server certificate validation.\n\n# Examples\n\n```\nuse mq_bridge::models::TlsConfig;\n\nlet tls = TlsConfig {\n    required: true,\n    ca_file: Some(\"/path/to/ca.pem\".to_string()),\n    cert_file: Some(\"/path/to/cert.pem\".to_string()),\n    key_file: Some(\"/path/to/key.pem\".to_string()),\n    ..Default::default()\n};\n```",
+      "type": "object",
+      "properties": {
+        "accept_invalid_certs": {
+          "description": "If true, disable server certificate verification (insecure).",
+          "type": "boolean",
+          "default": false
+        },
+        "ca_file": {
+          "description": "Path to the CA certificate file.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cert_file": {
+          "description": "Path to the client certificate file (PEM).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cert_password": {
+          "description": "Password for the private key (if encrypted).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "key_file": {
+          "description": "Path to the client private key file (PEM).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "required": {
+          "description": "If true, enable TLS/SSL.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "WatcherMode": {
+      "oneOf": [
+        {
+          "description": "Consumes and Acks messages. WARNING: This is destructive! The message will be lost (Acked) merely to trigger a notification.",
+          "type": "string",
+          "const": "consume"
+        },
+        {
+          "description": "Consumes and Nacks messages (requeue). Attempts to peek.\nNote: This may cause busy loops if peek_delay_ms is low.",
+          "type": "string",
+          "const": "peek"
+        },
+        {
+          "description": "No automatic watching. Notifications will not be generated.",
+          "type": "string",
+          "const": "none"
+        }
+      ]
+    },
+    "WeakJoinMiddleware": {
+      "description": "Weak Join middleware configuration.\n\nGroups and correlates messages based on a metadata key, waiting for a specified number\nof messages within a timeout window before processing them as a batch.\nMessages that exceed the timeout are processed individually.",
+      "type": "object",
+      "properties": {
+        "expected_count": {
+          "description": "The number of messages to wait for.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "group_by": {
+          "description": "The metadata key to group messages by (e.g., \"correlation_id\").",
+          "type": "string"
+        },
+        "timeout_ms": {
+          "description": "Timeout in milliseconds.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "group_by",
+        "expected_count",
+        "timeout_ms"
+      ]
+    },
+    "ZeroMqConfig": {
+      "type": "object",
+      "properties": {
+        "bind": {
+          "description": "If true, bind to the address. If false, connect.",
+          "type": "boolean",
+          "default": false
+        },
+        "internal_buffer_size": {
+          "description": "Internal buffer size for the channel. Defaults to 128.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "default": null,
+          "minimum": 0
+        },
+        "socket_type": {
+          "description": "The socket type (PUSH, PULL, PUB, SUB, REQ, REP).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ZeroMqSocketType"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "topic": {
+          "description": "(Consumer only) The ZeroMQ topic (for SUB sockets).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "description": "The ZeroMQ URL (e.g., \"tcp://127.0.0.1:5555\").",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ]
+    },
+    "ZeroMqSocketType": {
+      "description": "ZeroMQ socket type.\n\nDefines the messaging pattern for ZeroMQ connections.\nDifferent patterns support different communication paradigms (request-reply, publish-subscribe, etc.).",
+      "type": "string",
+      "enum": [
+        "push",
+        "pull",
+        "pub",
+        "sub",
+        "req",
+        "rep"
+      ]
+    }
+  }
+}

@@ -1,0 +1,25 @@
+# Sample MCP server configuration using Stdio transport.
+# This is the default mode, useful when the server is spawned directly by an LLM host process.
+
+log_level: info
+logger: plain
+
+mcp:
+  enabled: true
+  transport: stdio
+
+consumers:
+  input_log:
+    description: "Reads entries from a local log file."
+    file:
+      path: "/tmp/mcp_input.log"
+      format: "text"
+
+
+publishers:
+  # Creates a tool named `publish_to_app_log`
+  app_log:
+    description: "Appends entries to a local log file."
+    file:
+      path: "/tmp/mcp_app.log"
+      format: "text"

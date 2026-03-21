@@ -1,0 +1,32 @@
+# Sample MCP server configuration using Streamable HTTP (SSE).
+# This allows the MCP server to be accessed remotely via HTTP.
+
+log_level: debug
+logger: json
+
+mcp:
+  enabled: true
+  transport: streamable_http
+  bind: "0.0.0.0:3000"
+  # Optional: Protect the endpoint with an API Key
+  auth:
+    api_key:
+      header: "X-API-Key"
+      key: "change-me-to-something-secure"
+
+
+consumers:
+  input_log:
+    description: "Reads entries from a local log file."
+    file:
+      path: "/tmp/mcp_input.log"
+      format: "text"
+
+
+publishers:
+  # Creates a tool named `publish_to_app_log`
+  app_log:
+    description: "Appends entries to a local log file."
+    file:
+      path: "/tmp/mcp_app.log"
+      format: "text"

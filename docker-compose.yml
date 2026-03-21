@@ -1,0 +1,14 @@
+services:
+  mq-bridge-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: mcp-final
+    container_name: mq-bridge-mcp
+    ports:
+      - "3000:3000" # Default SSE port for MCP
+    volumes:
+      - ./config/config.yml:/app/config.yml:ro # Mount a config for MCP. You might want a separate one.
+    # The MCP server can also be run in stdio mode, which doesn't need ports.
+    # To run in stdio mode, you would override the command in your docker-compose.override.yml
+    # command: ["--config", "/app/config.yml", "--transport", "stdio"]
