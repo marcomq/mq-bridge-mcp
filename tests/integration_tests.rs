@@ -36,20 +36,27 @@ impl DockerEnvironment {
         }
 
         // Ensure clean state before starting
-        let _ = Command::new("docker-compose")
-            .args(&["-f", &compose_file, "down", "-v", "--remove-orphans"])
+        let _ = Command::new("docker")
+            .args(&[
+                "compose",
+                "-f",
+                &compose_file,
+                "down",
+                "-v",
+                "--remove-orphans",
+            ])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .status();
 
         println!("Starting {} environment...", service);
-        let status = Command::new("docker-compose")
-            .args(&["-f", &compose_file, "up", "-d"])
+        let status = Command::new("docker")
+            .args(&["compose", "-f", &compose_file, "up", "-d"])
             .status()
-            .expect("Failed to execute docker-compose");
+            .expect("Failed to execute docker compose");
 
         if !status.success() {
-            panic!("Failed to start docker-compose environment for {}", service);
+            panic!("Failed to start docker compose environment for {}", service);
         }
 
         // Wait for services to be ready.
@@ -65,8 +72,15 @@ impl DockerEnvironment {
 impl Drop for DockerEnvironment {
     fn drop(&mut self) {
         println!("Tearing down {} environment...", self.compose_file);
-        let _ = Command::new("docker-compose")
-            .args(&["-f", &self.compose_file, "down", "-v", "--remove-orphans"])
+        let _ = Command::new("docker")
+            .args(&[
+                "compose",
+                "-f",
+                &self.compose_file,
+                "down",
+                "-v",
+                "--remove-orphans",
+            ])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .status();
@@ -77,10 +91,10 @@ fn wait_for_healthy(compose_file: &str) {
     let start = std::time::Instant::now();
     let timeout = Duration::from_secs(30);
     while start.elapsed() < timeout {
-        let output = Command::new("docker-compose")
-            .args(&["-f", compose_file, "ps"])
+        let output = Command::new("docker")
+            .args(&["compose", "-f", compose_file, "ps"])
             .output()
-            .expect("Failed to execute docker-compose ps");
+            .expect("Failed to execute docker compose ps");
 
         if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout);
