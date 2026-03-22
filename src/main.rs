@@ -71,7 +71,9 @@ fn apply_overrides(config: &mut McpAppConfig, args: &Cli) {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .init();
 
     let args = Cli::parse();
 
@@ -85,10 +87,12 @@ async fn main() -> anyhow::Result<()> {
         } else {
             let path = std::path::Path::new(&schema_path);
             if let Some(parent) = path.parent()
-                && !parent.as_os_str().is_empty() && !parent.exists() {
-                    std::fs::create_dir_all(parent)
-                        .context("Failed to create parent directory for schema")?;
-                }
+                && !parent.as_os_str().is_empty()
+                && !parent.exists()
+            {
+                std::fs::create_dir_all(parent)
+                    .context("Failed to create parent directory for schema")?;
+            }
             std::fs::write(path, schema_json).context("Failed to write schema file")?;
         }
         return Ok(());

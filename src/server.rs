@@ -100,66 +100,63 @@ impl SubscriptionManager {
         }
 
         if let Some(consumer_name) = uri.strip_prefix("mq://")
-            && let Some(def) = self.consumers.get(consumer_name) {
-                if matches!(def.watcher_mode, WatcherMode::None) {
-                    return;
-                }
+            && let Some(def) = self.consumers.get(consumer_name)
+        {
+            if matches!(def.watcher_mode, WatcherMode::None) {
+                return;
+            }
 
-                watchers.insert(uri.clone());
-                let manager = self.clone();
-                let uri_clone = uri.clone();
-                let consumer_name = consumer_name.to_string();
-                let endpoint = def.endpoint.clone();
-                let mode = def.watcher_mode.clone();
-                let peek_delay = def.peek_delay_ms;
+            watchers.insert(uri.clone());
+            let manager = self.clone();
+            let uri_clone = uri.clone();
+            let consumer_name = consumer_name.to_string();
+            let endpoint = def.endpoint.clone();
+            let mode = def.watcher_mode.clone();
+            let peek_delay = def.peek_delay_ms;
 
-                tokio::spawn(async move {
-                    info!("Starting watcher for {}", uri_clone);
-                    let mut consumer = match endpoint.create_consumer(&consumer_name).await {
-                        Ok(c) => c,
+            tokio::spawn(async move {
+                info!("Starting watcher for {}", uri_clone);
+                let mut consumer = match endpoint.create_consumer(&consumer_name).await {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Failed to create watcher consumer for {}: {}", uri_clone, e);
+                        manager.active_watchers.write().await.remove(&uri_clone);
+                        return;
+                    }
+                };
+
+                loop {
+                    match consumer.receive().await {
+                        Ok(received) => {
+                            manager.notify(&uri_clone).await;
+                            let disposition = match mode {
+                                WatcherMode::Consume => mq_bridge::traits::MessageDisposition::Ack,
+                                WatcherMode::Peek => {
+                                    tokio::time::sleep(Duration::from_millis(peek_delay)).await;
+                                    mq_bridge::traits::MessageDisposition::Nack
+                                }
+                                WatcherMode::None => mq_bridge::traits::MessageDisposition::Nack,
+                            };
+                            let _ = (received.commit)(disposition).await;
+                        }
                         Err(e) => {
-                            error!("Failed to create watcher consumer for {}: {}", uri_clone, e);
-                            manager.active_watchers.write().await.remove(&uri_clone);
-                            return;
-                        }
-                    };
-
-                    loop {
-                        match consumer.receive().await {
-                            Ok(received) => {
-                                manager.notify(&uri_clone).await;
-                                let disposition = match mode {
-                                    WatcherMode::Consume => {
-                                        mq_bridge::traits::MessageDisposition::Ack
-                                    }
-                                    WatcherMode::Peek => {
-                                        tokio::time::sleep(Duration::from_millis(peek_delay)).await;
-                                        mq_bridge::traits::MessageDisposition::Nack
-                                    }
-                                    WatcherMode::None => {
-                                        mq_bridge::traits::MessageDisposition::Nack
-                                    }
-                                };
-                                let _ = (received.commit)(disposition).await;
-                            }
-                            Err(e) => {
-                                error!("Watcher for {} failed: {}", uri_clone, e);
-                                break;
-                            }
-                        }
-                        let subs = manager.subscribers.read().await;
-                        if let Some(list) = subs.get(&uri_clone) {
-                            if list.is_empty() {
-                                break;
-                            }
-                        } else {
+                            error!("Watcher for {} failed: {}", uri_clone, e);
                             break;
                         }
                     }
-                    info!("Stopping watcher for {}", uri_clone);
-                    manager.active_watchers.write().await.remove(&uri_clone);
-                });
-            }
+                    let subs = manager.subscribers.read().await;
+                    if let Some(list) = subs.get(&uri_clone) {
+                        if list.is_empty() {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                info!("Stopping watcher for {}", uri_clone);
+                manager.active_watchers.write().await.remove(&uri_clone);
+            });
+        }
     }
 }
 

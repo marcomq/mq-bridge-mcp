@@ -94,7 +94,7 @@ fn wait_for_healthy(compose_file: &str) {
             // Docker compose command failed, retry briefly
             return;
         }
-        thread::sleep(Duration::from_millis(500));
+        thread::sleep(Duration::from_millis(1000));
     }
     panic!(
         "Services in {} did not become healthy in time",
@@ -105,7 +105,12 @@ fn wait_for_healthy(compose_file: &str) {
 // Note: Run these tests with `cargo test -- --test-threads=1 --ignored` to ensure
 // sequential execution (avoiding port conflicts) and to include these ignored tests.
 
-fn run_publish_test(config_yaml: &str, tool_name: &str) {
+fn run_integration_test(
+    config_yaml: &str,
+    tool_name: &str,
+    consume_tool: Option<&str>,
+    warmup: bool,
+) {
     // Write config to a temporary file
     let config_path = std::env::temp_dir().join(format!("mcp_test_{}.yml", tool_name));
     std::fs::write(&config_path, config_yaml).expect("Failed to write test config");
@@ -145,6 +150,25 @@ fn run_publish_test(config_yaml: &str, tool_name: &str) {
         .write_all(format!("{}\n", initialized_notif).as_bytes())
         .expect("Failed to write initialized");
 
+    // Optional Warmup: Initialize consumer to ensure subscription/session exists before publishing
+    if warmup {
+        if let Some(consume_name) = consume_tool {
+            let warmup_req = format!(
+                r#"{{"jsonrpc":"2.0","method":"tools/call","params":{{"name":"{}","arguments":{{"timeout_ms":1000,"max_messages":1}}}},"id":999}}"#,
+                consume_name
+            );
+            stdin
+                .write_all(format!("{}\n", warmup_req).as_bytes())
+                .expect("Failed to write warmup call");
+
+            let mut warmup_line = String::new();
+            reader
+                .read_line(&mut warmup_line)
+                .expect("Failed to read warmup response");
+            // We ignore the result of warmup (likely a timeout)
+        }
+    }
+
     // 3. Call Publish Tool
     let call_req = format!(
         r#"{{"jsonrpc":"2.0","method":"tools/call","params":{{"name":"{}","arguments":{{"message":{{"payload":"hello from integration test"}}}}}},"id":2}}"#,
@@ -170,6 +194,33 @@ fn run_publish_test(config_yaml: &str, tool_name: &str) {
         line
     );
 
+    if let Some(consume_name) = consume_tool {
+        // thread::sleep(Duration::from_millis(30000));
+        // 5. Call Consume Tool
+        let consume_req = format!(
+            r#"{{"jsonrpc":"2.0","method":"tools/call","params":{{"name":"{}","arguments":{{"timeout_ms":5000,"max_messages":1}}}},"id":3}}"#,
+            consume_name
+        );
+        stdin
+            .write_all(format!("{}\n", consume_req).as_bytes())
+            .expect("Failed to write consume call");
+
+        line.clear();
+        reader
+            .read_line(&mut line)
+            .expect("Failed to read consume response");
+        // thread::sleep(Duration::from_millis(100000));
+
+        if line.contains("\"error\"") {
+            panic!("Consume tool call failed: {}", line);
+        }
+        assert!(
+            line.contains("hello from integration test"),
+            "Consume response did not contain expected payload. Got: {}",
+            line
+        );
+    }
+
     // Cleanup
     let _ = child.kill();
 }
@@ -185,13 +236,30 @@ publishers:
   kafka_test:
     kafka:
       url: "localhost:9092"
-      topic: "test_topic"
+      topic: "test_topic_mcp"
       delayed_ack: false
+      producer_options: 
+        - ["queue.buffering.max.ms", "50"]
+        - ["acks", "1"]
+        - ["compression.type", "snappy"]
     description: "Integration Test Kafka"
+consumers:
+  kafka_test:
+    kafka:
+      url: "localhost:9092"
+      topic: "test_topic_mcp"
+      group_id: "test_group"
+      consumer_options:
+        - ["auto.offset.reset", "earliest"]
+    description: "Integration Test Kafka Consumer"
 "#;
 
-    // Note: Tool name suffix replaces '-' with '_', but here we use 'kafka_test' (underscore) so it stays same.
-    run_publish_test(config, "publish_to_kafka_test");
+    run_integration_test(
+        config,
+        "publish_to_kafka_test",
+        Some("consume_from_kafka_test"),
+        false,
+    );
 }
 
 #[test]
@@ -205,11 +273,22 @@ publishers:
   amqp_test:
     amqp:
       url: "amqp://guest:guest@localhost:5672/%2f"
-      exchange: "amq.topic"
+      queue: "test_queue"
     description: "Integration Test AMQP"
+consumers:
+  amqp_test:
+    amqp:
+      url: "amqp://guest:guest@localhost:5672/%2f"
+      queue: "test_queue"
+    description: "Integration Test AMQP Consumer"
 "#;
 
-    run_publish_test(config, "publish_to_amqp_test");
+    run_integration_test(
+        config,
+        "publish_to_amqp_test",
+        Some("consume_from_amqp_test"),
+        false,
+    );
 }
 
 #[test]
@@ -225,10 +304,22 @@ publishers:
       url: "postgres://testuser:testpass@localhost:5432/testdb"
       table: "messages"
       auto_create_table: true
-    description: "Integration Test Postgres"
+    description: "Integration Test Postgres Publisher"
+consumers:
+  postgres_test:
+    sqlx:
+      url: "postgres://testuser:testpass@localhost:5432/testdb"
+      table: "messages"
+      delete_after_read: true
+    description: "Integration Test Postgres Consumer"
 "#;
 
-    run_publish_test(config, "publish_to_postgres_test");
+    run_integration_test(
+        config,
+        "publish_to_postgres_test",
+        Some("consume_from_postgres_test"),
+        false,
+    );
 }
 
 #[test]
@@ -248,15 +339,22 @@ publishers:
       path: "{}"
       format: raw
     description: "Integration Test File"
+consumers:
+  file_test:
+    file:
+      path: "{}"
+      mode: consume
+    description: "Integration Test File Consumer"
 "#,
-        file_path_str
+        file_path_str, file_path_str
     );
 
-    run_publish_test(&config, "publish_to_file_test");
-
-    // Verify content
-    let content = std::fs::read_to_string(&temp_file).expect("Failed to read output file");
-    assert!(content.contains("hello from integration test"));
+    run_integration_test(
+        &config,
+        "publish_to_file_test",
+        Some("consume_from_file_test"),
+        false,
+    );
 
     // Cleanup
     let _ = std::fs::remove_file(temp_file);
@@ -294,7 +392,7 @@ publishers:
         port
     );
 
-    run_publish_test(&config, "publish_to_http_test");
+    run_integration_test(&config, "publish_to_http_test", None, false);
 }
 
 #[test]
@@ -311,9 +409,21 @@ publishers:
       database: "testdb"
       collection: "messages"
     description: "Integration Test MongoDB"
+consumers:
+  mongo_test:
+    mongodb:
+      url: "mongodb://admin:password@localhost:27017/?authSource=admin"
+      database: "testdb"
+      collection: "messages"
+    description: "Integration Test MongoDB Consumer"
 "#;
 
-    run_publish_test(config, "publish_to_mongo_test");
+    run_integration_test(
+        config,
+        "publish_to_mongo_test",
+        Some("consume_from_mongo_test"),
+        false,
+    );
 }
 
 #[test]
@@ -327,12 +437,25 @@ publishers:
   nats_test:
     nats:
       url: "nats://localhost:4222"
-      subject: "test.subject"
-      no_jetstream: true
+      subject: test-stream.pipeline
+      stream: test-stream
+      stream_max_messages: 10000
     description: "Integration Test NATS"
+consumers:
+  nats_test:
+    nats:
+      url: "nats://localhost:4222"
+      subject: test-stream.pipeline
+      stream: test-stream
+    description: "Integration Test NATS Consumer"
 "#;
 
-    run_publish_test(config, "publish_to_nats_test");
+    run_integration_test(
+        config,
+        "publish_to_nats_test",
+        Some("consume_from_nats_test"),
+        false,
+    );
 }
 
 #[test]
@@ -347,8 +470,30 @@ publishers:
     mqtt:
       url: "tcp://localhost:1883"
       topic: "test/topic"
+      client_id: "test-publisher-mcp"
+      clean_session: false
+      qos: 1
+      max_inflight: 500
+      queue_capacity: 1000
+      delayed_ack: false
     description: "Integration Test MQTT"
+consumers:
+  mqtt_test:
+    mqtt:
+      url: "tcp://localhost:1883"
+      topic: "test/topic"
+      client_id: "test-consumer-mcp"
+      clean_session: false
+      qos: 1
+      max_inflight: 500
+      queue_capacity: 1000
+    description: "Integration Test MQTT Consumer"
 "#;
 
-    run_publish_test(config, "publish_to_mqtt_test");
+    run_integration_test(
+        config,
+        "publish_to_mqtt_test",
+        Some("consume_from_mqtt_test"),
+        true,
+    );
 }
