@@ -139,6 +139,22 @@ pub struct ConsumerConfig {
     pub peek_delay_ms: u64,
 }
 
+impl ConsumerConfig {
+    pub fn augmented_description(&self) -> String {
+        let mut desc = self.description.clone();
+        if self.read_only {
+            desc.push_str(" (Read Only)");
+        }
+        if self.idempotent {
+            desc.push_str(" (Idempotent)");
+        }
+        if self.open_world {
+            desc.push_str(" (Open World)");
+        }
+        desc
+    }
+}
+
 fn default_log_level() -> String {
     "info".to_string()
 }

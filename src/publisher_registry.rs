@@ -13,6 +13,22 @@ pub struct PublisherDefinition {
     pub idempotent: bool,
 }
 
+impl PublisherDefinition {
+    pub fn augmented_description(&self) -> String {
+        let mut desc = self.description.clone();
+        if self.destructive {
+            desc.push_str(" (Destructive)");
+        }
+        if self.idempotent {
+            desc.push_str(" (Idempotent)");
+        }
+        if self.open_world {
+            desc.push_str(" (Open World)");
+        }
+        desc
+    }
+}
+
 static PUBLISHER_DEFINITION_REGISTRY: OnceLock<RwLock<HashMap<String, PublisherDefinition>>> =
     OnceLock::new();
 

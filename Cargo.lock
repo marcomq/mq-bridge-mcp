@@ -2918,9 +2918,9 @@ dependencies = [
 
 [[package]]
 name = "mq-bridge"
-version = "0.2.9"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1db8136e500ad2ae1d54aec22d5e5736f6898c3da1c14925aa3e1f9d8dad8633"
+checksum = "5e20d161108d8cb520854d80e2e05c634c7e3bb5038ec846e4d1cedf8e2712d2"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -2935,6 +2935,7 @@ dependencies = [
  "flate2",
  "futures",
  "h2 0.4.13",
+ "http-body 1.0.1",
  "http-body-util",
  "hyper 1.8.1",
  "hyper-rustls 0.27.7",
@@ -2972,7 +2973,7 @@ dependencies = [
 
 [[package]]
 name = "mq-bridge-mcp"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "axum",
@@ -4108,7 +4109,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4956,10 +4957,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.3.4",
+ "getrandom 0.4.2",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

@@ -20,7 +20,7 @@ It acts as a bridge, exposing message brokers, databases, and APIs as **Tools** 
 
 ### 1. Configuration
 
-Create a configuration file `mcp-config.yml`. This defines what the AI can see and do.
+Create a configuration file `config.yml`. This defines what the AI can see and do.
 
 ```yaml
 mcp:
@@ -73,4 +73,11 @@ To use the MCP server with Claude Desktop, configure it to run the `mq-bridge-mc
     }
   }
 }
+```
+
+### Analyze locally
+```
+cargo build
+npx @modelcontextprotocol/inspector target/debug/mq-bridge-mcp --config config/stdio_file_file.yml
+
 ```

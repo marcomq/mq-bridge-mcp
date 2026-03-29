@@ -1,14 +1,15 @@
 [package]
 name = "mq-bridge-mcp"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["Marco Mengelkoch"]
 license = "MIT"
 description = "MCP Server for mq-bridge"
 
 [dependencies]
-mq-bridge = { version="0.2.9", features = ["schema"] }
-config = { version = "0.15.21", features = ["yaml"] }
+mq-bridge = { version="0.2.10", features = ["schema"] }
+# mq-bridge = { path = "../mq-bridge", features = ["schema"] }
+config = { version = "0.15.22", features = ["yaml"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 schemars = "1.2.1"

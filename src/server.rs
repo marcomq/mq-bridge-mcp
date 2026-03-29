@@ -258,17 +258,7 @@ impl MqBridgeMcpServer {
         for name in publisher_registry::list_publishers() {
             if let Some(pub_def) = publisher_registry::get_publisher(&name) {
                 let tool_name = format!("publish_to_{}", to_tool_suffix(&name));
-                let mut description = pub_def.description.clone();
-                if pub_def.destructive {
-                    description.push_str(" (Destructive)");
-                }
-                if pub_def.open_world {
-                    description.push_str(" (Open World)");
-                }
-                if pub_def.idempotent {
-                    description.push_str(" (Idempotent)");
-                }
-
+                let description = pub_def.augmented_description();
                 let schemas = config
                     .publishers
                     .get(&name)
@@ -309,7 +299,7 @@ impl MqBridgeMcpServer {
             let tool_name = format!("consume_from_{}", to_tool_suffix(name));
             tool_list.push(McpTool {
                 name: tool_name,
-                description: def.description.clone(),
+                description: def.augmented_description(),
                 action: McpToolAction::Consume,
                 connector: ConnectorRef {
                     connector_type: def.endpoint.endpoint_type.name().to_string(),
@@ -474,7 +464,7 @@ impl MqBridgeMcpServer {
                         .map(|(name, def)| {
                             serde_json::json!({
                                 "name": format!("consume_from_{}", to_tool_suffix(name)),
-                                "description": def.description,
+                                "description": def.augmented_description(),
                                 "type": def.endpoint.endpoint_type.name(),
                                 "read_only": def.read_only,
                                 "open_world": def.open_world,
@@ -498,19 +488,9 @@ impl MqBridgeMcpServer {
                 let mut endpoint_list: Vec<serde_json::Value> = Vec::new();
                 for name in publisher_registry::list_publishers() {
                     if let Some(pub_def) = publisher_registry::get_publisher(&name) {
-                        let mut description = pub_def.description.clone();
-                        if pub_def.destructive {
-                            description.push_str(" (Destructive)");
-                        }
-                        if pub_def.open_world {
-                            description.push_str(" (Open World)");
-                        }
-                        if pub_def.idempotent {
-                            description.push_str(" (Idempotent)");
-                        }
                         endpoint_list.push(serde_json::json!({
                             "name": format!("publish_to_{}", to_tool_suffix(&name)),
-                            "description": description,
+                            "description": pub_def.augmented_description(),
                             "type": pub_def.endpoint_type,
                             "destructive": pub_def.destructive,
                             "open_world": pub_def.open_world,
@@ -593,26 +573,39 @@ impl MqBridgeMcpServer {
                 let input: EndpointInput =
                     serde_json::from_value(args).unwrap_or(EndpointInput { name: None });
 
-                let publishers = publisher_registry::list_publishers();
-                let consumers: Vec<String> = self.consumers.keys().cloned().collect();
-
-                let status = match input.name.as_deref() {
+                match input.name.as_deref() {
                     Some(name) => {
-                        let is_publisher = publishers.contains(&name.to_string());
-                        let is_consumer = self.consumers.contains_key(name);
-                        serde_json::json!({
-                            "name": name,
-                            "publisher": is_publisher,
-                            "consumer": is_consumer,
-                        })
-                    }
-                    None => serde_json::json!({
-                        "publishers": publishers,
-                        "consumers": consumers,
-                    }),
-                };
+                        // Check if it's an active publisher
+                        if let Some(pub_def) = publisher_registry::get_publisher(name) {
+                            let status = pub_def.publisher.inner().status().await;
+                            return Ok(tools::success_value(
+                                serde_json::to_value(status).unwrap_or_default(),
+                            ));
+                        }
 
-                Ok(tools::success_value(status))
+                        // Check if it's an active consumer
+                        if let Some(consumer_arc) = consumer_registry::get_consumer(name) {
+                            let consumer = consumer_arc.lock().await;
+                            let status = consumer.status().await;
+                            return Ok(tools::success_value(
+                                serde_json::to_value(status).unwrap_or_default(),
+                            ));
+                        }
+
+                        Err(mcp_invalid(format!(
+                            "Endpoint '{}' not found or not currently active",
+                            name
+                        )))
+                    }
+                    None => {
+                        let publishers = publisher_registry::list_publishers();
+                        let consumers: Vec<String> = self.consumers.keys().cloned().collect();
+                        Ok(tools::success_value(serde_json::json!({
+                            "publishers": publishers,
+                            "consumers": consumers,
+                        })))
+                    }
+                }
             }
         }
     }
