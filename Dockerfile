@@ -145,7 +145,7 @@ RUN touch input.log error.log && mkdir /app_placeholder && \
     fi
 
 # --- Final Stage MQ-BRIDGE-MCP ---
-FROM gcr.io/distroless/cc-debian12:nonroot AS mcp-final
+FROM gcr.io/distroless/cc-debian12:nonroot AS final
 
 COPY --from=builder /usr/src/mq-bridge-mcp/mq-bridge-mcp /usr/local/bin/mq-bridge-mcp
 COPY --from=builder --chown=nonroot:nonroot /app_placeholder /app

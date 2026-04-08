@@ -172,19 +172,6 @@ jobs:
           cache-from: type=gha,scope=build-amd64-v${{ env.DOCKER_CACHE_VERSION }}
           cache-to: type=gha,mode=max,scope=build-amd64-v${{ env.DOCKER_CACHE_VERSION }}
 
-      - name: Build and push mq-bridge-mcp (amd64)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64
-          target: mcp-final
-          push: true
-          tags: ghcr.io/${{ env.IMAGE_NAME }}-mcp:amd64-tmp
-          build-args: |
-            CACHE_BUST=${{ env.DOCKER_CACHE_VERSION }}
-          cache-from: type=gha,scope=build-amd64-v${{ env.DOCKER_CACHE_VERSION }}
-          cache-to: type=gha,mode=max,scope=build-amd64-v${{ env.DOCKER_CACHE_VERSION }}
-
   build-linux-arm64:
     name: Build linux/arm64
     needs: test
@@ -218,19 +205,6 @@ jobs:
           target: final
           push: true
           tags: ghcr.io/${{ env.IMAGE_NAME }}:arm64-tmp
-          build-args: |
-            CACHE_BUST=${{ env.DOCKER_CACHE_VERSION }}
-          cache-from: type=gha,scope=build-arm64-v${{ env.DOCKER_CACHE_VERSION }}
-          cache-to: type=gha,mode=max,scope=build-arm64-v${{ env.DOCKER_CACHE_VERSION }}
-
-      - name: Build and push mq-bridge-mcp (arm64)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/arm64
-          target: mcp-final
-          push: true
-          tags: ghcr.io/${{ env.IMAGE_NAME }}-mcp:arm64-tmp
           build-args: |
             CACHE_BUST=${{ env.DOCKER_CACHE_VERSION }}
           cache-from: type=gha,scope=build-arm64-v${{ env.DOCKER_CACHE_VERSION }}
