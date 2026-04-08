@@ -74,18 +74,15 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            binary_name: mq-bridge-app
-            mcp_binary_name: mq-bridge-mcp
+            binary_name: mq-bridge-mcp
             use_cross: true
           - os: macos-latest
             target: aarch64-apple-darwin
-            binary_name: mq-bridge-app
-            mcp_binary_name: mq-bridge-mcp
+            binary_name: mq-bridge-mcp
             use_cross: false
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            binary_name: mq-bridge-app.exe
-            mcp_binary_name: mq-bridge-mcp.exe
+            binary_name: mq-bridge-mcp.exe
             use_cross: false
     steps:
       - name: Checkout repository
@@ -119,10 +116,9 @@ jobs:
       - name: Package artifacts
         shell: bash
         run: |
-          ASSET_NAME="mq-bridge-app-${{ matrix.target }}"
+          ASSET_NAME="mq-bridge-mcp-${{ matrix.target }}"
           mkdir staging
           cp "target/${{ matrix.target }}/release/${{ matrix.binary_name }}" staging/
-          cp "target/${{ matrix.target }}/release/${{ matrix.mcp_binary_name }}" staging/
           cp LICENSE README.md staging/
           if [ "$RUNNER_OS" == "Windows" ]; then
             7z a "${ASSET_NAME}.zip" ./staging/*
@@ -162,7 +158,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push mq-bridge-app (amd64)
+      - name: Build and push mq-bridge-mcp (amd64)
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -214,7 +210,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push mq-bridge-app (arm64)
+      - name: Build and push mq-bridge-mcp (arm64)
         uses: docker/build-push-action@v6
         with:
           context: .

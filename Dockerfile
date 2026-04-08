@@ -5,7 +5,7 @@ ARG BUILDPLATFORM
 # Bump DOCKER_CACHE_VERSION in release.yml to invalidate this cache
 ARG CACHE_BUST=1
 
-WORKDIR /usr/src/mq-bridge-app
+WORKDIR /usr/src/mq-bridge-mcp
 
 RUN dpkg --add-architecture arm64 && \
     apt-get update && \
@@ -105,10 +105,9 @@ ENV MQ_HOME="/opt/mqm"
 ENV RUSTFLAGS="-L native=/opt/mqm/lib64"
 
 # Copy project files
-WORKDIR /usr/src/mq-bridge-app
+WORKDIR /usr/src/mq-bridge-mcp
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
-COPY static ./static
 
 # DEBUG: run cmake standalone so the full error is visible in GHA logs
 # even when cargo's output is truncated. Remove once build is stable.
@@ -116,7 +115,7 @@ COPY static ./static
 
 # Build the application.
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
-    --mount=type=cache,target=/usr/src/mq-bridge-app/target,id=target-${TARGETARCH}-${CACHE_BUST},sharing=locked \
+    --mount=type=cache,target=/usr/src/mq-bridge-mcp/target,id=target-${TARGETARCH}-${CACHE_BUST},sharing=locked \
     if [ "$TARGETARCH" = "amd64" ]; then \
         RUST_TARGET="x86_64-unknown-linux-gnu"; \
         CARGO_FEATURES="--features=ibm-mq"; \
@@ -128,13 +127,12 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     CMAKE_BUILD_PARALLEL_LEVEL=1 \
     cargo build -vv --target "$RUST_TARGET" --profile release-with-lto $CARGO_FEATURES --jobs 1 && \
     cargo build --bin mq-bridge-mcp -vv --target "$RUST_TARGET" --profile release-with-lto $CARGO_FEATURES --jobs 1 && \
-    cp target/$RUST_TARGET/release-with-lto/mq-bridge-app mq-bridge-app && \
-    cp target/$RUST_TARGET/release-with-lto/mq-bridge-mcp mq-bridge-mcp
+    cp target/$RUST_TARGET/release-with-lto/mq-bridge-mcp mq-bridge-mcp 
 
 # Identify and copy only the necessary MQ libraries for the final stage
 RUN mkdir /mq-libs && \
     if [ "$TARGETARCH" = "amd64" ]; then \
-        ldd mq-bridge-app | grep '/opt/mqm/lib64/' | awk '{print $3}' | xargs -I {} cp -L {} /mq-libs/; \
+        ldd mq-bridge-mcp | grep '/opt/mqm/lib64/' | awk '{print $3}' | xargs -I {} cp -L {} /mq-libs/; \
     fi
 
 # Stage the correct libz for the final image based on target arch
@@ -146,34 +144,10 @@ RUN touch input.log error.log && mkdir /app_placeholder && \
         cp /usr/lib/aarch64-linux-gnu/libz.so.* /dist_libs/; \
     fi
 
-# --- Final Stage MQ-BRIDGE-APP ---
-FROM gcr.io/distroless/cc-debian12:nonroot AS final
-
-COPY --from=builder /usr/src/mq-bridge-app/mq-bridge-app /usr/local/bin/mq-bridge-app
-COPY --from=builder --chown=nonroot:nonroot /app_placeholder /app
-COPY --from=builder --chown=nonroot:nonroot /usr/src/mq-bridge-app/input.log /app/input.log
-COPY --from=builder --chown=nonroot:nonroot /usr/src/mq-bridge-app/error.log /app/error.log
-COPY --from=builder /dist_libs/libz.so.* /lib/
-
-COPY --from=builder /mq-libs /opt/mqm/lib64
-COPY --from=builder /opt/mqm/licenses /opt/mqm/licenses
-
-ENV LD_LIBRARY_PATH="/opt/mqm/lib64"
-ENV HOST_ADDR=host.docker.internal:3000
-
-COPY config /config
-
-WORKDIR /app
-
-EXPOSE 9090
-EXPOSE 9091
-
-ENTRYPOINT ["/usr/local/bin/mq-bridge-app"]
-
 # --- Final Stage MQ-BRIDGE-MCP ---
 FROM gcr.io/distroless/cc-debian12:nonroot AS mcp-final
 
-COPY --from=builder /usr/src/mq-bridge-app/mq-bridge-mcp /usr/local/bin/mq-bridge-mcp
+COPY --from=builder /usr/src/mq-bridge-mcp/mq-bridge-mcp /usr/local/bin/mq-bridge-mcp
 COPY --from=builder --chown=nonroot:nonroot /app_placeholder /app
 COPY --from=builder /dist_libs/libz.so.* /lib/
 
