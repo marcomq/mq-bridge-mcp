@@ -65,7 +65,7 @@ jobs:
 
   build-release-assets:
     name: Build release assets for ${{ matrix.target }}
-    needs: create-release
+    needs: release
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
