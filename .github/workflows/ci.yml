@@ -47,4 +47,4 @@ jobs:
         run: cargo build --all-targets
 
       - name: Run cargo test
-        run: cargo test --all-targets
+        run: cargo test --all-targets -- --test-threads=1

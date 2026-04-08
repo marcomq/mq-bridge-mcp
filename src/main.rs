@@ -12,7 +12,7 @@ mod tools;
 use anyhow::Context;
 use clap::Parser;
 use std::time::Duration;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use crate::configuration::{McpAppConfig, McpTransport, load_mcp_app_config};
 use crate::server::MqBridgeMcpServer;
@@ -116,7 +116,9 @@ async fn main() -> anyhow::Result<()> {
 
         let mut attempts = 0;
         const MAX_ATTEMPTS: u32 = 10;
-        mq_bridge::endpoints::check_publisher(name, &route.output, None)?;
+        if let Err(e) = mq_bridge::endpoints::check_publisher(name, &route.output, None) {
+            error!("Configuration check failed for publisher '{}': {}. It may not function correctly.", name, e);
+        }
 
         while attempts < MAX_ATTEMPTS {
             attempts += 1;
