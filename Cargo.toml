@@ -46,3 +46,7 @@ zeromq = ["mq-bridge/zeromq"]
 sled = ["mq-bridge/sled"]
 grpc = ["mq-bridge/grpc"]
 amqp = ["mq-bridge/amqp"]
+
+[profile.release-with-lto]
+inherits = "release"
+lto = "thin"
