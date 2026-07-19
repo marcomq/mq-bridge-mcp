@@ -6,6 +6,10 @@
 ![macOS](https://img.shields.io/badge/macOS-supported-green?logo=apple)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+**Support dropped** 
+
+Use https://github.com/marcomq/mq-bridge-app instead.
+
 `mq-bridge-mcp` connects your AI assistants (like **Claude Desktop**) to your messaging infrastructure using the **Model Context Protocol (MCP)**.
 
 It acts as a bridge, exposing message brokers, databases, and APIs as **Tools** and **Resources** that LLMs can natively understand and interact with.
